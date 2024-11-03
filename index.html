@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teudat Zeut Validator</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-3xl">
+        <div class="bg-white rounded-lg shadow-lg p-6">
+            <h1 class="text-2xl font-bold text-gray-800 mb-6">Teudat Zeut Validator</h1>
+            
+            <div class="mb-6">
+                <label for="tzInput" class="block text-sm font-medium text-gray-700 mb-2">
+                    Enter Teudat Zeut Number:
+                </label>
+                <input type="text" 
+                       id="tzInput" 
+                       class="w-full px-4 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                       pattern="[0-9]*"
+                       maxlength="9"
+                       placeholder="Enter 9 digits">
+            </div>
+
+            <button onclick="analyzeTZ()" 
+                    class="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 mb-6">
+                Analyze
+            </button>
+
+            <div id="results" class="space-y-4 hidden">
+                <h2 class="text-lg font-semibold text-gray-700">Possible Corrections:</h2>
+                <div id="resultsList" class="bg-gray-50 rounded-md p-4 space-y-2"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function calculateCheckDigit(idBase) {
+            let total = 0;
+            const paddedId = idBase.toString().padStart(8, '0');
+            
+            for (let i = 0; i < 8; i++) {
+                const digit = parseInt(paddedId[i]);
+                if (i % 2 === 0) {
+                    total += digit;
+                } else {
+                    const doubled = digit * 2;
+                    total += doubled < 10 ? doubled : doubled - 9;
+                }
+            }
+            
+            return (10 - (total % 10)) % 10;
+        }
+
+        function isValidTZ(fullId) {
+            const idStr = fullId.toString().padStart(9, '0');
+            if (idStr.length !== 9) return false;
+            
+            const base = idStr.slice(0, 8);
+            const check = parseInt(idStr[8]);
+            return calculateCheckDigit(base) === check;
+        }
+
+        function generateVariations(wrongTZ) {
+            const variations = [];
+            wrongTZ = wrongTZ.toString().padStart(9, '0');
+            
+            // Single digit changes
+            for (let i = 0; i < 9; i++) {
+                for (let d = 0; d < 10; d++) {
+                    const newNumber = wrongTZ.slice(0, i) + d.toString() + wrongTZ.slice(i + 1);
+                    if (isValidTZ(newNumber) && newNumber !== wrongTZ) {
+                        variations.push([newNumber, 1, `Position ${i}: ${wrongTZ[i]}→${d}`]);
+                    }
+                }
+            }
+            
+            // Double digit changes
+            for (let i = 0; i < 9; i++) {
+                for (let j = i + 1; j < 9; j++) {
+                    for (let d1 = 0; d1 < 10; d1++) {
+                        for (let d2 = 0; d2 < 10; d2++) {
+                            let newNumber = wrongTZ.split('');
+                            newNumber[i] = d1.toString();
+                            newNumber[j] = d2.toString();
+                            newNumber = newNumber.join('');
+                            if (isValidTZ(newNumber) && newNumber !== wrongTZ) {
+                                variations.push([
+                                    newNumber, 
+                                    2, 
+                                    `Positions ${i},${j}: ${wrongTZ[i]},${wrongTZ[j]}→${d1},${d2}`
+                                ]);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Sort by number of changes and numeric difference
+            variations.sort((a, b) => {
+                if (a[1] !== b[1]) return a[1] - b[1];
+                return Math.abs(parseInt(a[0]) - parseInt(wrongTZ)) - 
+                       Math.abs(parseInt(b[0]) - parseInt(wrongTZ));
+            });
+            
+            return variations;
+        }
+
+        function analyzeTZ() {
+            const input = document.getElementById('tzInput').value;
+            if (!/^\d{9}$/.test(input)) {
+                alert('Please enter exactly 9 digits');
+                return;
+            }
+
+            const variations = generateVariations(input);
+            const resultsDiv = document.getElementById('results');
+            const resultsList = document.getElementById('resultsList');
+            resultsList.innerHTML = '';
+
+            if (variations.length === 0) {
+                resultsList.innerHTML = '<p class="text-gray-600">No valid variations found with up to 2 digit changes.</p>';
+            } else {
+                variations.slice(0, 10).forEach((variation, index) => {
+                    const [number, changes, description] = variation;
+                    const div = document.createElement('div');
+                    div.className = 'p-3 bg-white rounded shadow-sm hover:shadow-md transition-shadow';
+                    div.innerHTML = `
+                        <div class="flex justify-between items-center">
+                            <span class="text-lg font-medium">${number}</span>
+                            <span class="text-sm text-gray-500">${changes} change${changes > 1 ? 's' : ''}</span>
+                        </div>
+                        <div class="text-sm text-gray-600">${description}</div>
+                    `;
+                    resultsList.appendChild(div);
+                });
+            }
+
+            resultsDiv.classList.remove('hidden');
+        }
+
+        // Add input validation
+        document.getElementById('tzInput').addEventListener('input', function(e) {
+            this.value = this.value.replace(/[^0-9]/g, '').slice(0, 9);
+        });
+    </script>
+</body>
+</html>
