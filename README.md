@@ -49,7 +49,7 @@ Simply download the HTML file and open it in a web browser. No installation or b
 git clone https://github.com/alexKov24/tzfind.git
 
 # Navigate to the project directory
-cd teudat-zeut-validator
+cd tzfind
 
 # Open index.html in your browser
 ```
